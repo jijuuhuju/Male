@@ -1,167 +1,70 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>マイ・メールボックス</title>
+    <meta charset="UTF-8"><title>ミニポータル</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        
-        /* アカウント設定エリア */
-        .account-box { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; width: 320px; box-sizing: border-box; }
-        .account-box h4 { margin: 0 0 10px 0; color: #333; }
-        .account-box input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        
-        /* 文字列のコピー・貼り付けエリア */
-        .io-area { width: 100%; height: 60px; font-size: 11px; padding: 6px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; resize: none; margin-bottom: 10px; background: #fafafa; }
-
-        .btn-group { display: flex; gap: 8px; }
-        .btn { flex: 1; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; text-align: center; }
-        .btn-save { background: #1890ff; color: white; }
-        .btn-export { background: #52c41a; color: white; }
-        .btn-import { background: #faad14; color: white; }
-
-        /* メールアイコン */
-        .mailbox-container { text-align: center; position: relative; cursor: pointer; user-select: none; }
-        .mail-icon { font-size: 80px; transition: transform 0.2s ease; display: inline-block; position: relative; }
-        .mailbox-container:active .mail-icon { transform: scale(0.85) rotate(-10deg); }
-        
-        /* 通知バッジ */
-        .badge { position: absolute; top: -5px; right: -10px; background: #ff4d4f; color: white; border-radius: 50%; padding: 4px 10px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        
-        /* メール一覧 */
-        .mail-list { display: none; margin-top: 20px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; text-align: left; box-sizing: border-box; }
-        .mail-list.show { display: block; animation: fadeIn 0.3s ease forwards; }
-        
-        .mail-item { padding: 10px 0; }
-        .mail-date { font-size: 12px; color: #8c8c8c; }
-        .mail-title { font-weight: bold; color: #333; margin: 4px 0; font-size: 16px; }
-        .mail-body { font-size: 14px; color: #555; line-height: 1.4; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10deg); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 320px; margin: 10px auto; display: none; }
+        .active { display: block; }
+        input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; }
+        .btn { width: 100%; padding: 10px; border: none; background: #1890ff; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 5px; }
+        .nav { display: flex; justify-content: space-around; width: 320px; margin: 0 auto 10px; background: white; padding: 8px; border-radius: 8px; }
+        .nav span { cursor: pointer; font-size: 20px; }
+        .mail { border-bottom: 1px dashed #eee; padding: 8px 0; text-align: left; font-size: 13px; }
     </style>
 </head>
 <body>
+    <div id="nav" class="nav" style="display:none;"><span onclick="go('p-mail')">📬</span><span onclick="go('p-game')">🎮</span><span onclick="go('p-save')">⚙️</span></div>
 
-<!-- 1. アカウント設定エリア -->
-<div class="account-box">
-    <h4 id="welcome-msg">アカウント設定</h4>
-    <input type="text" id="username" placeholder="ユーザー名を入力">
-    <input type="text" id="userinfo" placeholder="その他の情報（メモなど）を入力">
-    
-    <!-- コピペ用の文字が出るテキストボックス -->
-    <textarea id="data-text" class="io-area" placeholder="ここに保存用テキストが出力されます。復元時はここに貼り付けてください。"></textarea>
-    
-    <div class="btn-group">
-        <button class="btn btn-save" onclick="saveAccount()">保存</button>
-        <button class="btn btn-export" onclick="exportToText()">文字で出す</button>
-        <button class="btn btn-import" onclick="importFromText()">文字から読込</button>
+    <!-- 1. 登録画面 -->
+    <div id="p-reg" class="card active">
+        <h3>アカウント作成</h3>
+        <input type="text" id="name" placeholder="ユーザー名">
+        <textarea id="desc" placeholder="自己紹介" rows="2"></textarea>
+        <label><input type="checkbox" id="chk" style="width:auto;"> 更新状況をメールで受け取る</label><br><br>
+        <button class="btn" onclick="reg()">新規作成してスタート</button>
+        <button class="btn" style="background:#faad14" onclick="load()">セーブコードから復元</button>
+        <textarea id="code-in" placeholder="コードをここに貼り付け" rows="2" style="margin-top:10px;"></textarea>
     </div>
-</div>
 
-<!-- 2. メールボックスエリア -->
-<div class="mailbox-container" onclick="toggleMail()">
-    <div class="mail-icon">
-        📬
-        <div class="badge" id="mail-count">1</div>
+    <!-- 2. メール画面 -->
+    <div id="p-mail" class="card">
+        <h3>メール（受信: <span id="count">0</span>）</h3>
+        <div id="m-box" style="max-height:150px; overflow-y:auto; margin-bottom:10px;"></div>
+        <input type="text" id="m-title" placeholder="件名">
+        <textarea id="m-body" placeholder="本文" rows="2"></textarea>
+        <button class="btn" onclick="send()">メール送信</button>
     </div>
-    
-    <div class="mail-list" id="mail-list" onclick="event.stopPropagation()">
-        <h3>受信トレイ</h3>
-        <div class="mail-item">
-            <div class="mail-date">2026-06-29</div>
-            <div class="mail-title">サイトへようこそ！</div>
-            <div class="mail-body" id="mail-welcome-body">これは最初のメールです。メールボックスが開通しました！</div>
-        </div>
+
+    <!-- 3. ゲーム・ランキング画面 -->
+    <div id="p-game" class="card">
+        <h3>連打ゲーム & ランキング</h3>
+        <p>スコア: <span id="score">0</span> / ベスト: <span id="best">0</span></p>
+        <button class="btn" style="background:#52c41a; height:60px;" onclick="tap()">ココを連打！</button>
+        <div id="rank" style="text-align:left; font-size:14px; margin-top:10px; line-height:1.6;"></div>
     </div>
-</div>
+
+    <!-- 4. セーブ画面 -->
+    <div id="p-save" class="card">
+        <h3>セーブコード出力</h3>
+        <textarea id="code-out" readonly onclick="this.select()" rows="4"></textarea>
+        <button class="btn" style="background:#52c41a" onclick="save()">コードを生成</button>
+        <button class="btn" style="background:#ff4d4f" onclick="location.reload()">ログアウト</button>
+    </div>
 
 <script>
-    // ページを開いた時に自動でローカル記憶を呼び出す
-    window.onload = function() {
-        const savedName = localStorage.getItem('mailbox_username');
-        const savedInfo = localStorage.getItem('mailbox_userinfo');
-        
-        if (savedName) {
-            document.getElementById('username').value = savedName;
-            document.getElementById('welcome-msg').innerText = `ようこそ、${savedName} さん`;
-            document.getElementById('mail-welcome-body').innerText = `こんにちは、${savedName}さん！メールボックスが開通しました。`;
-        }
-        if (savedInfo) {
-            document.getElementById('userinfo').value = savedInfo;
-        }
-    };
+    let d = { name:"", desc:"", chk:false, high:0, mails:[{t:"サイトへようこそ！", b:"メールボックスが開通しました。"}] };
+    let score = 0, timer = null;
 
-    // 【保存ボタン】現在のブラウザに記憶させる
-    function saveAccount() {
-        const name = document.getElementById('username').value;
-        const info = document.getElementById('userinfo').value;
-        
-        localStorage.setItem('mailbox_username', name);
-        localStorage.setItem('mailbox_userinfo', info);
-        
-        document.getElementById('welcome-msg').innerText = name ? `ようこそ、${name} さん` : "アカウント設定";
-        document.getElementById('mail-welcome-body').innerText = name ? `こんにちは、${name}さん！メールボックスが開通しました。` : "これは最初のメールです。メールボックスが開通しました！";
-        alert('アカウント情報をブラウザに保存しました！');
-    }
-
-    // 【文字で出すボタン】設定をコピペ可能な1行の暗号文字列にして書き出す（エクスポート）
-    function exportToText() {
-        const data = {
-            username: document.getElementById('username').value,
-            userinfo: document.getElementById('userinfo').value
-        };
-        
-        // データを安全にコピペできるようにBase64という文字に変形して書き出す
-        const jsonStr = JSON.stringify(data);
-        const encodedData = btoa(unescape(encodeURIComponent(jsonStr)));
-        
-        const textBox = document.getElementById('data-text');
-        textBox.value = encodedData;
-        textBox.select(); // 自動で全選択状態にする
-        alert('ボックス内に保存用の文字を出力しました！長押ししてコピーしてください。');
-    }
-
-    // 【文字から読込ボタン】貼り付けられた文字からデータを復元する（インポート）
-    function importFromText() {
-        const textData = document.getElementById('data-text').value.trim();
-        if (!textData) {
-            alert('ボックスの中に保存用の文字を貼り付けてから押してください。');
-            return;
-        }
-
-        try {
-            // 暗号化された文字を元のデータに戻す
-            const decodedStr = decodeURIComponent(escape(atob(textData)));
-            const data = JSON.parse(decodedStr);
-            
-            document.getElementById('username').value = data.username || '';
-            document.getElementById('userinfo').value = data.userinfo || '';
-            
-            // ローウザの記憶も更新する
-            localStorage.setItem('mailbox_username', data.username || '');
-            localStorage.setItem('mailbox_userinfo', data.userinfo || '');
-            
-            document.getElementById('welcome-msg').innerText = data.username ? `ようこそ、${data.username} さん` : "アカウント設定";
-            document.getElementById('mail-welcome-body').innerText = data.username ? `こんにちは、${data.username}さん！メールボックスが開通しました。` : "これは最初のメールです。メールボックスが開通しました！";
-            
-            alert('文字データからアカウントを復元しました！');
-        } catch (err) {
-            alert('正しくない文字データです。コピーした文字がすべて貼り付けられているか確認してください。');
-        }
-    }
-
-    // メール一覧の開け閉め
-    function toggleMail() {
-        const list = document.getElementById('mail-list');
-        list.classList.toggle('show');
-        
-        if(list.classList.contains('show')) {
-            document.getElementById('mail-count').style.opacity = '0';
-        } else {
-            document.getElementById('mail-count').style.opacity = '1';
-        }
-    }
+    function go(id) { document.querySelectorAll('.card').forEach(c=>c.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='p-game') showRank(); }
+    function reg() { d.name=document.getElementById('name').value; d.desc=document.getElementById('desc').value; d.chk=document.getElementById('chk').checked; if(!d.name)return alert("名前入力必須"); if(d.chk) d.mails.unshift({t:"【更新】メルマガ",b:"受信設定完了！"}); login(); }
+    function login() { document.getElementById('nav').style.display='flex'; document.getElementById('best').innerText=d.high; showMails(); go('p-mail'); }
+    function showMails() { let b=document.getElementById('m-box'); b.innerHTML=""; d.mails.forEach(m=>b.innerHTML+=`<div class="mail"><b>${m.t}</b><br>${m.b}</div>`); document.getElementById('count').innerText=d.mails.length; }
+    function send() { let t=document.getElementById('m-title').value, b=document.getElementById('m-body').value; if(!t||!b)return; d.mails.unshift({t:"[送信済] "+t, b:b}); document.getElementById('m-title').value=""; document.getElementById('m-body').value=""; showMails(); }
+    function tap() { if(!timer){ score=0; timer=setTimeout(()=>{ if(score>d.high)d.high=score; d.high=Math.max(d.high,score); document.getElementById('best').innerText=d.high; timer=null; alert("終了！スコア:"+score); },3000); } score++; document.getElementById('score').innerText=score; }
+    function showRank() { let r=document.getElementById('rank'); r.innerHTML=`🏆 ランキング<br>1位: プロ(45点)<br>2位: ${d.name}(${d.high}点)<br>3位: 一般人(5点)`; }
+    function save() { document.getElementById('code-out').value = btoa(unescape(encodeURIComponent(JSON.stringify(d)))); alert("コードをコピーして保存してください"); }
+    function load() { try { d=JSON.parse(decodeURIComponent(escape(atob(document.getElementById('code-in').value)))); login(); }catch(e){ alert("不正なコードです"); } }
 </script>
 </body>
 </html>
