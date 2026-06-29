@@ -1,26 +1,91 @@
-{
-  "name": "空白",
-  "desc": "",
-  "chk": true,
-  "high": 0,
-  "gPlay": 0,
-  "fCount": 1,
-  "mails": [
-    {
-      "t": "【streech】から返信が来ました",
-      "b": "「メールありがとう！私はボットだけど君のメッセージを読んだよ。連打ゲーム頑張ってね！」"
-    },
-    {
-      "t": "メールが【streech】さんに送信されました",
-      "b": "宛先: streechさんへ正常に送信しました。"
-    },
-    {
-      "t": "【更新】メルマガ",
-      "b": "受信設定完了！"
-    },
-    {
-      "t": "サイトへようこそ！",
-      "b": "メールボックスが開通しました。"
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><title>ミニポータル</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 10px; font-size: 14px; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 310px; margin: 10px auto; display: none; }
+        .active { display: block; }
+        input, textarea { width: 100%; padding: 6px; margin-bottom: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; }
+        .btn { width: 100%; padding: 8px; border: none; background: #1890ff; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 4px; }
+        .nav { display: flex; justify-content: space-around; width: 310px; margin: 0 auto; background: white; padding: 6px; border-radius: 8px; }
+        .nav span { cursor: pointer; font-size: 18px; }
+        .mail { border-bottom: 1px dashed #eee; padding: 6px 0; text-align: left; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="nav" class="nav" style="display:none;"><span onclick="go('p-mail')">📬</span><span onclick="go('p-game')">🎮</span><span onclick="go('p-save')">⚙️</span></div>
+
+    <!-- 1. 登録画面 -->
+    <div id="p-reg" class="card active">
+        <h3>アカウント作成</h3>
+        <input type="text" id="name" placeholder="ユーザー名">
+        <textarea id="desc" placeholder="自己紹介" rows="1"></textarea>
+        <label><input type="checkbox" id="chk" style="width:auto;"> メルマガを受け取る</label><br><br>
+        <button class="btn" onclick="reg()">新規作成</button>
+        <button class="btn" style="background:#faad14" onclick="load()">コードから復元</button>
+        <textarea id="code-in" placeholder="コードをここに貼り付け" rows="1"></textarea>
+    </div>
+
+    <!-- 2. メール画面 -->
+    <div id="p-mail" class="card">
+        <h3>メール（受信: <span id="count">0</span>）</h3>
+        <div id="m-box" style="max-height:120px; overflow-y:auto; margin-bottom:8px;"></div>
+        <input type="text" id="m-to" placeholder="送信先（プロ、一般人、など）">
+        <input type="text" id="m-title" placeholder="件名">
+        <textarea id="m-body" placeholder="本文" rows="1"></textarea>
+        <button class="btn" onclick="send()">メール送信</button>
+    </div>
+
+    <!-- 3. ゲーム画面 -->
+    <div id="p-game" class="card">
+        <h3>連打ゲーム & ランキング</h3>
+        <p>スコア: <span id="score">0</span> / ベスト: <span id="best">0</span> / プレイ: <span id="g-count">0</span></p>
+        <button class="btn" style="background:#52c41a; height:50px;" onclick="tap()">連打！</button>
+        <div id="rank" style="text-align:left; font-size:13px; margin-top:8px; line-height:1.4;"></div>
+    </div>
+
+    <!-- 4. セーブ画面 -->
+    <div id="p-save" class="card">
+        <h3>セーブコード</h3>
+        <textarea id="code-out" readonly onclick="this.select()" rows="2"></textarea>
+        <button class="btn" style="background:#52c41a" onclick="save()">コード生成</button>
+        <button class="btn" style="background:#ff4d4f" onclick="location.reload()">ログアウト</button>
+    </div>
+
+<script>
+    let d = { name:"", desc:"", chk:false, high:0, gPlay:0, fCount:0, mails:[{t:"サイトへようこそ！", b:"開通しました。"}] };
+    let score = 0, timer = null;
+    const rText = {
+        "プロ": ["君も連打やってる？僕の45点超えられるかな？", "さっき新しい連打の技を見つけたんだよ！", "ランキング見た？君のスコアもなかなかだね。"],
+        "一般人": ["お疲れ様です！暇な時にランキング見てます〜！", "今日の連打ゲーム、調子悪くて伸びないです笑", "プロさんのスコア見たけど、強すぎて勝てないよね…"],
+        "他": ["これからよろしくお願いします！フォローしておきますね！", "あなたの自己紹介読みましたよ。ワクワクしますね！", "通知が来たから急いで返信してみました！またね！"]
+    };
+
+    function go(id) { document.querySelectorAll('.card').forEach(c=>c.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='p-game') showRank(); }
+    function reg() { d.name=document.getElementById('name').value; d.desc=document.getElementById('desc').value; d.chk=document.getElementById('chk').checked; if(!d.name)return alert("名前必須"); if(d.chk) d.mails.unshift({t:"【更新】メルマガ",b:"受信設定完了！"}); login(); }
+    function login() { document.getElementById('nav').style.display='flex'; document.getElementById('best').innerText=d.high; document.getElementById('g-count').innerText=d.gPlay; showMails(); go('p-mail'); }
+    function showMails() { let b=document.getElementById('m-box'); b.innerHTML=""; d.mails.forEach(m=>b.innerHTML+=`<div class="mail"><b>${m.t}</b><br>${m.b}</div>`); document.getElementById('count').innerText=d.mails.length; }
+    function send() { 
+        let to=document.getElementById('m-to').value, t=document.getElementById('m-title').value, b=document.getElementById('m-body').value; if(!to||!t||!b)return;
+        d.mails.unshift({t:`メールが【${to}】さんに送信されました`, b:`正常に送信しました。`}); showMails();
+        setTimeout(() => { 
+            let pool = rText[to] || rText["他"], reply = pool[Math.floor(Math.random() * pool.length)];
+            d.mails.unshift({t:`【${to}】から返信が来ました`, b:reply});
+            if(d.fCount<10 && ++d.fCount===10) d.mails.unshift({t:"🎉おめでとう！", b:"フォロワーが10人行きました！"});
+            showMails();
+        }, 1500);
     }
-  ]
-}
+    function tap() { 
+        if(!timer){ 
+            score=0; d.gPlay++; document.getElementById('g-count').innerText=d.gPlay; 
+            if(d.gPlay===5) d.mails.unshift({t:"📢通知", b:"プレイ回数が5回突破しました！"});
+            timer=setTimeout(()=>{ if(score>d.high)d.high=score; document.getElementById('best').innerText=d.high; timer=null; showMails(); alert("終了！スコア:"+score); },3000); 
+        } score++; document.getElementById('score').innerText=score; 
+    }
+    function showRank() { document.getElementById('rank').innerHTML=`🏆 ランキング<br>1位: プロ(45点)<br>2位: ${d.name}(${d.high}点)<br>3位: 一般人(5点)<br>👥 フォロワー: ${d.fCount}人`; }
+    function save() { document.getElementById('code-out').value = btoa(unescape(encodeURIComponent(JSON.stringify(d)))); alert("コードを保存してください"); }
+    function load() { try { d=JSON.parse(decodeURIComponent(escape(atob(document.getElementById('code-in').value)))); login(); }catch(e){ alert("不正コードです"); } }
+</script>
+</body>
+</html>
